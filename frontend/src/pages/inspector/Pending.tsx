@@ -77,6 +77,7 @@ const Pending: React.FC = () => {
           dataSource={pendingSegments}
           rowKey="segment_id"
           loading={loading}
+          scroll={{ x: true }}
         />
       </Card>
     </Layout>

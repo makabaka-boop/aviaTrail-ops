@@ -224,7 +224,8 @@ def get_batches(
     if start_date:
         query = query.filter(ActivityBatch.activity_date >= start_date)
     if end_date:
-        query = query.filter(ActivityBatch.activity_date <= end_date)
+        next_day = (datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
+        query = query.filter(ActivityBatch.activity_date < next_day)
     if status:
         query = query.filter(ActivityBatch.status == status)
     if leader_id:
@@ -257,6 +258,14 @@ def create_batch(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["活动领队", "管理员"]))
 ):
+    route = db.query(ActivityRoute).filter(ActivityRoute.id == batch.route_id).first()
+    if not route:
+        raise HTTPException(status_code=400, detail="所选路线不存在")
+    if route.max_people and batch.people_count > route.max_people:
+        raise HTTPException(
+            status_code=400,
+            detail=f"参与人数({batch.people_count})超过路线最大人数({route.max_people})"
+        )
     db_batch = ActivityBatch(
         **batch.dict(),
         leader_id=current_user.id
@@ -280,8 +289,18 @@ def update_batch(
     
     if current_user.role == "活动领队" and db_batch.leader_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
-    
-    for key, value in batch.dict(exclude_unset=True).items():
+
+    update_data = batch.dict(exclude_unset=True)
+    people_count = update_data.get('people_count', db_batch.people_count)
+    route_id = update_data.get('route_id', db_batch.route_id)
+    route = db.query(ActivityRoute).filter(ActivityRoute.id == route_id).first()
+    if route and route.max_people and people_count > route.max_people:
+        raise HTTPException(
+            status_code=400,
+            detail=f"参与人数({people_count})超过路线最大人数({route.max_people})"
+        )
+
+    for key, value in update_data.items():
         setattr(db_batch, key, value)
     db.commit()
     db.refresh(db_batch)

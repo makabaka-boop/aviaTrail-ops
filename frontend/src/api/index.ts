@@ -99,10 +99,12 @@ export const leaderApi = {
 };
 
 export const dashboardApi = {
-  getOverview: () => api.get('/dashboard/overview'),
+  getOverview: (startDate?: string, endDate?: string) =>
+    api.get('/dashboard/overview', { params: { start_date: startDate, end_date: endDate } }),
   getRouteHeatmap: (startDate?: string, endDate?: string) =>
     api.get('/dashboard/route-heatmap', { params: { start_date: startDate, end_date: endDate } }),
-  getAnomalyDistribution: () => api.get('/dashboard/anomaly-distribution'),
+  getAnomalyDistribution: (startDate?: string, endDate?: string) =>
+    api.get('/dashboard/anomaly-distribution', { params: { start_date: startDate, end_date: endDate } }),
   getInspectionWorkload: (startDate?: string, endDate?: string) =>
     api.get('/dashboard/inspection-workload', {
       params: { start_date: startDate, end_date: endDate },
@@ -111,10 +113,12 @@ export const dashboardApi = {
   getHighFrequencyAnomalies: (threshold?: number, days?: number) =>
     api.get('/dashboard/high-frequency-anomalies', { params: { threshold, days } }),
   getOverdueInspections: () => api.get('/dashboard/overdue-inspections'),
-  getActivityPeakHours: (days?: number) =>
-    api.get('/dashboard/activity-peak-hours', { params: { days } }),
-  getRiskOverlap: () => api.get('/dashboard/risk-overlap'),
-  getRiskBatches: () => api.get('/dashboard/risk-batches'),
+  getActivityPeakHours: (startDate?: string, endDate?: string, days?: number) =>
+    api.get('/dashboard/activity-peak-hours', { params: { start_date: startDate, end_date: endDate, days } }),
+  getRiskOverlap: (startDate?: string, endDate?: string) =>
+    api.get('/dashboard/risk-overlap', { params: { start_date: startDate, end_date: endDate } }),
+  getRiskBatches: (startDate?: string, endDate?: string) =>
+    api.get('/dashboard/risk-batches', { params: { start_date: startDate, end_date: endDate } }),
 };
 
 export default api;

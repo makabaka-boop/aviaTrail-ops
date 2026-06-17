@@ -8,6 +8,7 @@ import {
   Card,
   Space,
   Divider,
+  Result,
 } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { inspectorApi, adminApi } from '../../api';
@@ -19,6 +20,7 @@ const { TextArea } = Input;
 const NewRecord: React.FC = () => {
   const [segments, setSegments] = useState<TrailSegment[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const location = useLocation();
@@ -31,11 +33,13 @@ const NewRecord: React.FC = () => {
   }, []);
 
   const loadSegments = async () => {
+    setLoadError(false);
     try {
       const response = await adminApi.getTrailSegments();
       setSegments(response.data);
     } catch (error) {
       message.error('加载路段失败');
+      setLoadError(true);
     }
   };
 
@@ -51,6 +55,23 @@ const NewRecord: React.FC = () => {
       setLoading(false);
     }
   };
+
+  if (loadError) {
+    return (
+      <Layout>
+        <Result
+          status="error"
+          title="数据加载失败"
+          subTitle="无法加载路段数据，请稍后重试"
+          extra={
+            <Button type="primary" onClick={loadSegments}>
+              重新加载
+            </Button>
+          }
+        />
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

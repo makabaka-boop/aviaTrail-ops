@@ -161,6 +161,15 @@ def create_activity_route(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["管理员"]))
 ):
+    if route.segment_ids:
+        ids = [x.strip() for x in route.segment_ids.split(',') if x.strip()]
+        for seg_id_str in ids:
+            if not seg_id_str.isdigit():
+                raise HTTPException(status_code=400, detail=f"分段ID必须为数字，'{seg_id_str}'无效")
+            seg = db.query(TrailSegment).filter(TrailSegment.id == int(seg_id_str)).first()
+            if not seg:
+                raise HTTPException(status_code=400, detail=f"分段ID {seg_id_str} 不存在")
+        route.segment_ids = ','.join(ids)
     db_route = ActivityRoute(**route.dict())
     db.add(db_route)
     db.commit()
@@ -178,7 +187,17 @@ def update_activity_route(
     db_route = db.query(ActivityRoute).filter(ActivityRoute.id == route_id).first()
     if not db_route:
         raise HTTPException(status_code=404, detail="Route not found")
-    for key, value in route.dict(exclude_unset=True).items():
+    update_data = route.dict(exclude_unset=True)
+    if 'segment_ids' in update_data and update_data['segment_ids']:
+        ids = [x.strip() for x in update_data['segment_ids'].split(',') if x.strip()]
+        for seg_id_str in ids:
+            if not seg_id_str.isdigit():
+                raise HTTPException(status_code=400, detail=f"分段ID必须为数字，'{seg_id_str}'无效")
+            seg = db.query(TrailSegment).filter(TrailSegment.id == int(seg_id_str)).first()
+            if not seg:
+                raise HTTPException(status_code=400, detail=f"分段ID {seg_id_str} 不存在")
+        update_data['segment_ids'] = ','.join(ids)
+    for key, value in update_data.items():
         setattr(db_route, key, value)
     db.commit()
     db.refresh(db_route)
