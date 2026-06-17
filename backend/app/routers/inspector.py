@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
 from datetime import datetime, timedelta
 from app.database import get_db
@@ -50,7 +51,7 @@ def get_inspection_records(
     if start_date:
         query = query.filter(InspectionRecord.inspection_date >= start_date)
     if end_date:
-        query = query.filter(InspectionRecord.inspection_date <= end_date)
+        query = query.filter(InspectionRecord.inspection_date < func.date(end_date) + timedelta(days=1))
     if status:
         query = query.filter(InspectionRecord.overall_status == status)
     

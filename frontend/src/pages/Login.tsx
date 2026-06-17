@@ -45,12 +45,13 @@ const Login: React.FC = () => {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
+        padding: '16px',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       }}
     >
       <Card
         title={showRegister ? '用户注册' : '用户登录'}
-        style={{ width: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+        style={{ width: '100%', maxWidth: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
       >
         {showRegister ? (
           <Form onFinish={handleRegister} layout="vertical">
@@ -84,7 +85,6 @@ const Login: React.FC = () => {
               rules={[{ required: true, message: '请选择角色' }]}
             >
               <Select placeholder="请选择角色">
-                <Select.Option value="管理员">管理员</Select.Option>
                 <Select.Option value="巡看人员">巡看人员</Select.Option>
                 <Select.Option value="活动领队">活动领队</Select.Option>
               </Select>
@@ -137,12 +137,7 @@ const Login: React.FC = () => {
             </div>
           </Form>
         )}
-        <div style={{ marginTop: 16, fontSize: 12, color: '#999', textAlign: 'center' }}>
-          <p>测试账号：</p>
-          <p>管理员: admin / admin123</p>
-          <p>巡看人员: inspector1 / inspector123</p>
-          <p>活动领队: leader1 / leader123</p>
-        </div>
+
       </Card>
     </div>
   );

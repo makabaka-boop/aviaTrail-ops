@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, message } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -14,11 +14,18 @@ import Records from './pages/inspector/Records';
 import NewRecord from './pages/inspector/NewRecord';
 import Batches from './pages/leader/Batches';
 import NewBatch from './pages/leader/NewBatch';
-import { isAuthenticated } from './utils/auth';
+import { isAuthenticated, hasRole } from './utils/auth';
 import 'dayjs/locale/zh-cn';
 
-const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  return isAuthenticated() ? <>{children}</> : <Navigate to="/login" />;
+const PrivateRoute: React.FC<{ children: React.ReactNode; roles?: string[] }> = ({ children, roles }) => {
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" />;
+  }
+  if (roles && roles.length > 0 && !hasRole(roles)) {
+    message.error('您没有权限访问该页面');
+    return <Navigate to="/dashboard" />;
+  }
+  return <>{children}</>;
 };
 
 const App: React.FC = () => {
@@ -38,7 +45,7 @@ const App: React.FC = () => {
           <Route
             path="/admin/segments"
             element={
-              <PrivateRoute>
+              <PrivateRoute roles={['管理员']}>
                 <Segments />
               </PrivateRoute>
             }
@@ -46,7 +53,7 @@ const App: React.FC = () => {
           <Route
             path="/admin/points"
             element={
-              <PrivateRoute>
+              <PrivateRoute roles={['管理员']}>
                 <ObservationPoints />
               </PrivateRoute>
             }
@@ -54,7 +61,7 @@ const App: React.FC = () => {
           <Route
             path="/admin/routes"
             element={
-              <PrivateRoute>
+              <PrivateRoute roles={['管理员']}>
                 <AdminRoutes />
               </PrivateRoute>
             }
@@ -62,7 +69,7 @@ const App: React.FC = () => {
           <Route
             path="/admin/equipments"
             element={
-              <PrivateRoute>
+              <PrivateRoute roles={['管理员']}>
                 <Equipments />
               </PrivateRoute>
             }
@@ -70,7 +77,7 @@ const App: React.FC = () => {
           <Route
             path="/admin/cycles"
             element={
-              <PrivateRoute>
+              <PrivateRoute roles={['管理员']}>
                 <Cycles />
               </PrivateRoute>
             }
@@ -78,7 +85,7 @@ const App: React.FC = () => {
           <Route
             path="/inspector/pending"
             element={
-              <PrivateRoute>
+              <PrivateRoute roles={['巡看人员', '管理员']}>
                 <Pending />
               </PrivateRoute>
             }
@@ -86,7 +93,7 @@ const App: React.FC = () => {
           <Route
             path="/inspector/records"
             element={
-              <PrivateRoute>
+              <PrivateRoute roles={['巡看人员', '管理员']}>
                 <Records />
               </PrivateRoute>
             }
@@ -94,7 +101,7 @@ const App: React.FC = () => {
           <Route
             path="/inspector/new"
             element={
-              <PrivateRoute>
+              <PrivateRoute roles={['巡看人员', '管理员']}>
                 <NewRecord />
               </PrivateRoute>
             }
@@ -102,7 +109,7 @@ const App: React.FC = () => {
           <Route
             path="/leader/batches"
             element={
-              <PrivateRoute>
+              <PrivateRoute roles={['活动领队', '管理员']}>
                 <Batches />
               </PrivateRoute>
             }
@@ -110,7 +117,7 @@ const App: React.FC = () => {
           <Route
             path="/leader/new"
             element={
-              <PrivateRoute>
+              <PrivateRoute roles={['活动领队', '管理员']}>
                 <NewBatch />
               </PrivateRoute>
             }

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
+import re
 from app.database import get_db
 from app.models import (
     User, TrailSegment, ObservationPoint, ActivityRoute,
@@ -161,6 +162,25 @@ def create_activity_route(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["管理员"]))
 ):
+    if route.segment_ids:
+        if not re.match(r'^(\d+,)*\d+$', route.segment_ids) and route.segment_ids != '':
+            raise HTTPException(status_code=400, detail="分段ID格式不正确，请使用英文逗号分隔的数字")
+        
+        segment_ids = [int(x.strip()) for x in route.segment_ids.split(',') if x.strip().isdigit()]
+        
+        if len(segment_ids) > 0:
+            existing_segments = db.query(TrailSegment).filter(
+                TrailSegment.id.in_(segment_ids)
+            ).all()
+            existing_ids = {s.id for s in existing_segments}
+            invalid_ids = [sid for sid in segment_ids if sid not in existing_ids]
+            
+            if invalid_ids:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"以下分段ID不存在: {', '.join(map(str, invalid_ids))}"
+                )
+    
     db_route = ActivityRoute(**route.dict())
     db.add(db_route)
     db.commit()
@@ -178,6 +198,27 @@ def update_activity_route(
     db_route = db.query(ActivityRoute).filter(ActivityRoute.id == route_id).first()
     if not db_route:
         raise HTTPException(status_code=404, detail="Route not found")
+    
+    if route.segment_ids is not None:
+        if route.segment_ids and route.segment_ids != '':
+            if not re.match(r'^(\d+,)*\d+$', route.segment_ids):
+                raise HTTPException(status_code=400, detail="分段ID格式不正确，请使用英文逗号分隔的数字")
+            
+            segment_ids = [int(x.strip()) for x in route.segment_ids.split(',') if x.strip().isdigit()]
+            
+            if len(segment_ids) > 0:
+                existing_segments = db.query(TrailSegment).filter(
+                    TrailSegment.id.in_(segment_ids)
+                ).all()
+                existing_ids = {s.id for s in existing_segments}
+                invalid_ids = [sid for sid in segment_ids if sid not in existing_ids]
+                
+                if invalid_ids:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"以下分段ID不存在: {', '.join(map(str, invalid_ids))}"
+                    )
+    
     for key, value in route.dict(exclude_unset=True).items():
         setattr(db_route, key, value)
     db.commit()

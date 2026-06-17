@@ -167,8 +167,23 @@ const Routes: React.FC = () => {
           <Form.Item name="description" label="描述">
             <Input.TextArea placeholder="请输入描述" rows={3} />
           </Form.Item>
-          <Form.Item name="segment_ids" label="包含分段ID">
-            <Input placeholder="请输入分段ID，用逗号分隔" />
+          <Form.Item
+            name="segment_ids"
+            label="包含分段ID"
+            rules={[
+              {
+                validator: (_, value) => {
+                  if (!value || value === '') return Promise.resolve();
+                  const pattern = /^(\d+,)*\d+$/;
+                  if (!pattern.test(value)) {
+                    return Promise.reject(new Error('请输入正确格式的分段ID，使用英文逗号分隔的数字'));
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
+          >
+            <Input placeholder="请输入分段ID，用英文逗号分隔，如：1,2,3" />
           </Form.Item>
           <Form.Item name="estimated_duration_minutes" label="预估时长(分钟)">
             <InputNumber style={{ width: '100%' }} placeholder="请输入预估时长" min={0} />

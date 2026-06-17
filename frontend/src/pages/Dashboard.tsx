@@ -27,10 +27,14 @@ const Dashboard: React.FC = () => {
   const [peakHours, setPeakHours] = useState<any[]>([]);
   const [riskOverlap, setRiskOverlap] = useState<any[]>([]);
   const [riskBatches, setRiskBatches] = useState<any[]>([]);
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([
+    dayjs().subtract(30, 'day'),
+    dayjs(),
+  ]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [dateRange]);
 
   const safeFetch = async (apiCall: () => Promise<any>, fallback: any = null) => {
     try {
@@ -42,6 +46,9 @@ const Dashboard: React.FC = () => {
   };
 
   const loadData = async () => {
+    const startDate = dateRange[0].format('YYYY-MM-DD');
+    const endDate = dateRange[1].format('YYYY-MM-DD');
+
     const [
       overviewData,
       heatmapData,
@@ -53,15 +60,15 @@ const Dashboard: React.FC = () => {
       riskData,
       riskBatchesData,
     ] = await Promise.all([
-      safeFetch(() => dashboardApi.getOverview(), {}),
-      safeFetch(() => dashboardApi.getRouteHeatmap(), []),
-      safeFetch(() => dashboardApi.getAnomalyDistribution(), {}),
-      safeFetch(() => dashboardApi.getInspectionWorkload(), []),
-      safeFetch(() => dashboardApi.getPendingPoints(), {}),
+      safeFetch(() => dashboardApi.getOverview(startDate, endDate), {}),
+      safeFetch(() => dashboardApi.getRouteHeatmap(startDate, endDate), []),
+      safeFetch(() => dashboardApi.getAnomalyDistribution(startDate, endDate), {}),
+      safeFetch(() => dashboardApi.getInspectionWorkload(startDate, endDate), []),
+      safeFetch(() => dashboardApi.getPendingPoints(startDate, endDate), {}),
       safeFetch(() => dashboardApi.getOverdueInspections(), []),
-      safeFetch(() => dashboardApi.getActivityPeakHours(), []),
-      safeFetch(() => dashboardApi.getRiskOverlap(), []),
-      safeFetch(() => dashboardApi.getRiskBatches(), []),
+      safeFetch(() => dashboardApi.getActivityPeakHours(startDate, endDate), []),
+      safeFetch(() => dashboardApi.getRiskOverlap(startDate, endDate), []),
+      safeFetch(() => dashboardApi.getRiskBatches(startDate, endDate), []),
     ]);
 
     setOverview(overviewData);
@@ -267,12 +274,10 @@ const Dashboard: React.FC = () => {
       <div style={{ marginBottom: 16 }}>
         <Space>
           <RangePicker
-            defaultValue={[dayjs().subtract(30, 'day'), dayjs()]}
+            value={dateRange}
             onChange={(dates) => {
               if (dates && dates[0] && dates[1]) {
-                dashboardApi.getRouteHeatmap(dates[0].format('YYYY-MM-DD'), dates[1].format('YYYY-MM-DD'))
-                  .then((res) => setRouteHeatmap(res.data))
-                  .catch(() => {});
+                setDateRange([dates[0], dates[1]]);
               }
             }}
           />
@@ -280,7 +285,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       <Row gutter={[16, 16]}>
-        <Col span={6}>
+        <Col xs={12} sm={12} md={6} lg={6} xl={6}>
           <Card>
             <Statistic
               title="步道分段总数"
@@ -290,7 +295,7 @@ const Dashboard: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} sm={12} md={6} lg={6} xl={6}>
           <Card>
             <Statistic
               title="观察点总数"
@@ -300,7 +305,7 @@ const Dashboard: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} sm={12} md={6} lg={6} xl={6}>
           <Card>
             <Statistic
               title="活动路线总数"
@@ -310,7 +315,7 @@ const Dashboard: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} sm={12} md={6} lg={6} xl={6}>
           <Card>
             <Statistic
               title="活动批次总数"
@@ -323,7 +328,7 @@ const Dashboard: React.FC = () => {
       </Row>
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        <Col span={6}>
+        <Col xs={12} sm={12} md={6} lg={6} xl={6}>
           <Card>
             <Statistic
               title="风险批次数量"
@@ -333,7 +338,7 @@ const Dashboard: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} sm={12} md={6} lg={6} xl={6}>
           <Card>
             <Statistic
               title="高风险批次"
@@ -343,7 +348,7 @@ const Dashboard: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} sm={12} md={6} lg={6} xl={6}>
           <Card>
             <Statistic
               title="今日风险叠加批次"
@@ -353,7 +358,7 @@ const Dashboard: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} sm={12} md={6} lg={6} xl={6}>
           <Card>
             <Statistic
               title="超期巡看分段"
@@ -366,12 +371,12 @@ const Dashboard: React.FC = () => {
       </Row>
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        <Col span={12}>
+        <Col xs={24} sm={24} md={12} lg={12} xl={12}>
           <Card title="路线热度统计">
             <ReactECharts option={routeHeatmapChart} style={{ height: 300 }} />
           </Card>
         </Col>
-        <Col span={12}>
+        <Col xs={24} sm={24} md={12} lg={12} xl={12}>
           <Card title="异常分布统计">
             <ReactECharts option={anomalyChart} style={{ height: 300 }} />
           </Card>
@@ -379,12 +384,12 @@ const Dashboard: React.FC = () => {
       </Row>
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        <Col span={12}>
+        <Col xs={24} sm={24} md={12} lg={12} xl={12}>
           <Card title="巡看人员工作量">
             <ReactECharts option={workloadChart} style={{ height: 300 }} />
           </Card>
         </Col>
-        <Col span={12}>
+        <Col xs={24} sm={24} md={12} lg={12} xl={12}>
           <Card title="活动时段人流分布">
             <ReactECharts option={peakHoursChart} style={{ height: 300 }} />
           </Card>
@@ -392,7 +397,7 @@ const Dashboard: React.FC = () => {
       </Row>
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        <Col span={8}>
+        <Col xs={24} sm={24} md={8} lg={8} xl={8}>
           <Card
             title={
               <Space>
@@ -407,10 +412,11 @@ const Dashboard: React.FC = () => {
               size="small"
               pagination={false}
               rowKey="id"
+              scroll={{ x: 'max-content' }}
             />
           </Card>
         </Col>
-        <Col span={8}>
+        <Col xs={24} sm={24} md={8} lg={8} xl={8}>
           <Card
             title={
               <Space>
@@ -425,10 +431,11 @@ const Dashboard: React.FC = () => {
               size="small"
               pagination={false}
               rowKey="segment_id"
+              scroll={{ x: 'max-content' }}
             />
           </Card>
         </Col>
-        <Col span={8}>
+        <Col xs={24} sm={24} md={8} lg={8} xl={8}>
           <Card
             title={
               <Space>
@@ -443,6 +450,7 @@ const Dashboard: React.FC = () => {
               size="small"
               pagination={false}
               rowKey="batch_id"
+              scroll={{ x: 'max-content' }}
             />
           </Card>
         </Col>
