@@ -50,7 +50,7 @@ def get_inspection_records(
     if start_date:
         query = query.filter(InspectionRecord.inspection_date >= start_date)
     if end_date:
-        query = query.filter(InspectionRecord.inspection_date <= end_date)
+        query = query.filter(InspectionRecord.inspection_date <= end_date + ' 23:59:59')
     if status:
         query = query.filter(InspectionRecord.overall_status == status)
     

@@ -22,6 +22,7 @@ const statusOptions = ['正常开放', '待巡看', '局部绕行', '维护处�
 const Routes: React.FC = () => {
   const [routes, setRoutes] = useState<ActivityRoute[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingRoute, setEditingRoute] = useState<ActivityRoute | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
@@ -33,23 +34,33 @@ const Routes: React.FC = () => {
 
   const loadRoutes = async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const response = await adminApi.getActivityRoutes(statusFilter);
       setRoutes(response.data);
     } catch (error) {
       message.error('加载活动路线失败');
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
   };
 
   const handleAdd = () => {
+    if (loadError) {
+      message.error('数据加载失败，请刷新后重试');
+      return;
+    }
     setEditingRoute(null);
     form.resetFields();
     setModalVisible(true);
   };
 
   const handleEdit = (route: ActivityRoute) => {
+    if (loadError) {
+      message.error('数据加载失败，请刷新后重试');
+      return;
+    }
     setEditingRoute(route);
     form.setFieldsValue(route);
     setModalVisible(true);
@@ -167,8 +178,22 @@ const Routes: React.FC = () => {
           <Form.Item name="description" label="描述">
             <Input.TextArea placeholder="请输入描述" rows={3} />
           </Form.Item>
-          <Form.Item name="segment_ids" label="包含分段ID">
-            <Input placeholder="请输入分段ID，用逗号分隔" />
+          <Form.Item
+            name="segment_ids"
+            label="包含分段ID"
+            rules={[
+              {
+                validator: (_, value) => {
+                  if (!value) return Promise.resolve();
+                  if (!/^[\d,]+$/.test(value)) {
+                    return Promise.reject(new Error('只能输入数字和英文逗号'));
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
+          >
+            <Input placeholder="请输入分段ID，用英文逗号分隔" />
           </Form.Item>
           <Form.Item name="estimated_duration_minutes" label="预估时长(分钟)">
             <InputNumber style={{ width: '100%' }} placeholder="请输入预估时长" min={0} />

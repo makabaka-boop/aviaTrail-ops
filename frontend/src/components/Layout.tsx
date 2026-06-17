@@ -1,5 +1,5 @@
-import React from 'react';
-import { Layout as AntLayout, Menu, Avatar, Dropdown, Button } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Layout as AntLayout, Menu, Avatar, Dropdown, Button, Drawer } from 'antd';
 import {
   DashboardOutlined,
   EyeOutlined,
@@ -8,6 +8,7 @@ import {
   UserOutlined,
   LogoutOutlined,
   PlusOutlined,
+  MenuOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getUser, logout, hasRole } from '../utils/auth';
@@ -22,6 +23,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = getUser();
+  const [mobileMenuVisible, setMobileMenuVisible] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -35,7 +47,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       key: '/dashboard',
       icon: <DashboardOutlined />,
       label: '数据看板',
-      onClick: () => navigate('/dashboard'),
+      onClick: () => {
+        navigate('/dashboard');
+        setMobileMenuVisible(false);
+      },
     });
 
     if (hasRole(['管理员'])) {
@@ -47,27 +62,42 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {
             key: '/admin/segments',
             label: '步道分段管理',
-            onClick: () => navigate('/admin/segments'),
+            onClick: () => {
+              navigate('/admin/segments');
+              setMobileMenuVisible(false);
+            },
           },
           {
             key: '/admin/points',
             label: '观察点管理',
-            onClick: () => navigate('/admin/points'),
+            onClick: () => {
+              navigate('/admin/points');
+              setMobileMenuVisible(false);
+            },
           },
           {
             key: '/admin/routes',
             label: '活动路线管理',
-            onClick: () => navigate('/admin/routes'),
+            onClick: () => {
+              navigate('/admin/routes');
+              setMobileMenuVisible(false);
+            },
           },
           {
             key: '/admin/equipments',
             label: '器材清单管理',
-            onClick: () => navigate('/admin/equipments'),
+            onClick: () => {
+              navigate('/admin/equipments');
+              setMobileMenuVisible(false);
+            },
           },
           {
             key: '/admin/cycles',
             label: '巡看周期设置',
-            onClick: () => navigate('/admin/cycles'),
+            onClick: () => {
+              navigate('/admin/cycles');
+              setMobileMenuVisible(false);
+            },
           },
         ],
       });
@@ -82,18 +112,27 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {
             key: '/inspector/pending',
             label: '待巡看路段',
-            onClick: () => navigate('/inspector/pending'),
+            onClick: () => {
+              navigate('/inspector/pending');
+              setMobileMenuVisible(false);
+            },
           },
           {
             key: '/inspector/records',
             label: '巡看记录',
-            onClick: () => navigate('/inspector/records'),
+            onClick: () => {
+              navigate('/inspector/records');
+              setMobileMenuVisible(false);
+            },
           },
           {
             key: '/inspector/new',
             label: '新建巡看记录',
             icon: <PlusOutlined />,
-            onClick: () => navigate('/inspector/new'),
+            onClick: () => {
+              navigate('/inspector/new');
+              setMobileMenuVisible(false);
+            },
           },
         ],
       });
@@ -108,13 +147,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {
             key: '/leader/batches',
             label: '活动批次',
-            onClick: () => navigate('/leader/batches'),
+            onClick: () => {
+              navigate('/leader/batches');
+              setMobileMenuVisible(false);
+            },
           },
           {
             key: '/leader/new',
             label: '新建活动批次',
             icon: <PlusOutlined />,
-            onClick: () => navigate('/leader/new'),
+            onClick: () => {
+              navigate('/leader/new');
+              setMobileMenuVisible(false);
+            },
           },
         ],
       });
@@ -143,6 +188,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     ],
   };
 
+  const menuContent = (
+    <Menu
+      mode="inline"
+      selectedKeys={[location.pathname]}
+      style={{ height: '100%', borderRight: 0 }}
+      items={getMenuItems()}
+    />
+  );
+
   return (
     <AntLayout style={{ minHeight: '100vh' }}>
       <Header
@@ -151,29 +205,46 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           alignItems: 'center',
           justifyContent: 'space-between',
           background: '#001529',
-          padding: '0 24px',
+          padding: isMobile ? '0 16px' : '0 24px',
         }}
       >
-        <div style={{ color: 'white', fontSize: '20px', fontWeight: 'bold' }}>
-          🦅 观鸟步道管理平台
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          {isMobile && (
+            <Button
+              type="text"
+              icon={<MenuOutlined style={{ color: 'white', fontSize: 20 }} />}
+              onClick={() => setMobileMenuVisible(true)}
+              style={{ marginRight: 12 }}
+            />
+          )}
+          <div style={{ color: 'white', fontSize: isMobile ? 16 : 20, fontWeight: 'bold' }}>
+            🦅 观鸟步道管理平台
+          </div>
         </div>
         <Dropdown menu={userMenu}>
           <Button type="text" style={{ color: 'white' }}>
             <Avatar icon={<UserOutlined />} style={{ marginRight: 8 }} />
-            {user?.full_name}
+            {!isMobile && user?.full_name}
           </Button>
         </Dropdown>
       </Header>
       <AntLayout>
-        <Sider width={220} style={{ background: '#fff' }}>
-          <Menu
-            mode="inline"
-            selectedKeys={[location.pathname]}
-            style={{ height: '100%', borderRight: 0 }}
-            items={getMenuItems()}
-          />
-        </Sider>
-        <Content style={{ padding: '24px', background: '#f0f2f5' }}>
+        {!isMobile && (
+          <Sider width={220} style={{ background: '#fff' }}>
+            {menuContent}
+          </Sider>
+        )}
+        <Drawer
+          placement="left"
+          open={mobileMenuVisible}
+          onClose={() => setMobileMenuVisible(false)}
+          width={260}
+          style={{ padding: 0 }}
+          bodyStyle={{ padding: 0 }}
+        >
+          {menuContent}
+        </Drawer>
+        <Content style={{ padding: isMobile ? '16px' : '24px', background: '#f0f2f5', overflow: 'auto' }}>
           {children}
         </Content>
       </AntLayout>
