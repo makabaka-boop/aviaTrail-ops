@@ -269,6 +269,7 @@ const Batches: React.FC = () => {
           dataSource={batches}
           rowKey="id"
           loading={loading}
+          scroll={{ x: 'max-content' }}
           rowClassName={(record) =>
             record.risk_level === '高' ? 'risk-high-row' : record.risk_level === '中' ? 'risk-medium-row' : ''
           }

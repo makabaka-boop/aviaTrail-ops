@@ -16,3 +16,60 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+@media (max-width: 768px) {
+  .content-wrapper {
+    min-width: 0;
+  }
+
+  .ant-table-wrapper {
+    overflow-x: auto;
+  }
+
+  .ant-card {
+    margin-bottom: 12px;
+  }
+
+  .ant-statistic-title {
+    font-size: 12px;
+  }
+
+  .ant-statistic-content {
+    font-size: 20px;
+  }
+
+  .ant-space {
+    flex-wrap: wrap;
+  }
+
+  .ant-picker-range {
+    max-width: 100%;
+  }
+
+  .ant-select {
+    max-width: 100%;
+  }
+
+  .ant-form-item {
+    margin-bottom: 16px;
+  }
+
+  .risk-high-row,
+  .risk-medium-row {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ant-statistic-content {
+    font-size: 16px;
+  }
+
+  .ant-card-head-title {
+    font-size: 14px;
+  }
+
+  .ant-btn {
+    font-size: 13px;
+  }
+}
