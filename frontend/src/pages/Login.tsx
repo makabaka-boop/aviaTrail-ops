@@ -84,7 +84,6 @@ const Login: React.FC = () => {
               rules={[{ required: true, message: '请选择角色' }]}
             >
               <Select placeholder="请选择角色">
-                <Select.Option value="管理员">管理员</Select.Option>
                 <Select.Option value="巡看人员">巡看人员</Select.Option>
                 <Select.Option value="活动领队">活动领队</Select.Option>
               </Select>
@@ -137,12 +136,7 @@ const Login: React.FC = () => {
             </div>
           </Form>
         )}
-        <div style={{ marginTop: 16, fontSize: 12, color: '#999', textAlign: 'center' }}>
-          <p>测试账号：</p>
-          <p>管理员: admin / admin123</p>
-          <p>巡看人员: inspector1 / inspector123</p>
-          <p>活动领队: leader1 / leader123</p>
-        </div>
+
       </Card>
     </div>
   );

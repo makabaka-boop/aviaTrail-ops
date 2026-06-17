@@ -155,13 +155,42 @@ def get_activity_routes(
     return query.all()
 
 
+def validate_segment_ids(segment_ids_str: Optional[str], db: Session) -> str:
+    if not segment_ids_str:
+        return ""
+    
+    normalized = segment_ids_str.replace('，', ',').replace(' ', '')
+    id_strs = [s.strip() for s in normalized.split(',') if s.strip()]
+    
+    if not id_strs:
+        return ""
+    
+    try:
+        ids = [int(s) for s in id_strs]
+    except ValueError:
+        raise HTTPException(status_code=400, detail="分段ID必须为数字，用逗号分隔")
+    
+    existing_segments = db.query(TrailSegment).filter(TrailSegment.id.in_(ids)).all()
+    existing_ids = [s.id for s in existing_segments]
+    invalid_ids = [id for id in ids if id not in existing_ids]
+    
+    if invalid_ids:
+        raise HTTPException(status_code=400, detail=f"分段ID {', '.join(map(str, invalid_ids))} 不存在")
+    
+    return ','.join(map(str, ids))
+
+
 @router.post("/activity-routes", response_model=ActivityRouteResponse)
 def create_activity_route(
     route: ActivityRouteCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["管理员"]))
 ):
-    db_route = ActivityRoute(**route.dict())
+    route_data = route.dict()
+    if route_data.get('segment_ids'):
+        route_data['segment_ids'] = validate_segment_ids(route_data['segment_ids'], db)
+    
+    db_route = ActivityRoute(**route_data)
     db.add(db_route)
     db.commit()
     db.refresh(db_route)
@@ -178,7 +207,12 @@ def update_activity_route(
     db_route = db.query(ActivityRoute).filter(ActivityRoute.id == route_id).first()
     if not db_route:
         raise HTTPException(status_code=404, detail="Route not found")
-    for key, value in route.dict(exclude_unset=True).items():
+    
+    update_data = route.dict(exclude_unset=True)
+    if 'segment_ids' in update_data:
+        update_data['segment_ids'] = validate_segment_ids(update_data['segment_ids'], db)
+    
+    for key, value in update_data.items():
         setattr(db_route, key, value)
     db.commit()
     db.refresh(db_route)

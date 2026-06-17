@@ -1,13 +1,24 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from app.database import get_db
 from app.models import User, TrailSegment, ObservationPoint, InspectionRecord, InspectionCycle
 from app.schemas.inspection import InspectionRecordCreate, InspectionRecordResponse
 from app.auth import require_role, get_current_user
 
 router = APIRouter(prefix="/inspector", tags=["巡看人员"])
+
+
+def get_end_date_next_day(end_date_str: Optional[str]) -> Optional[str]:
+    if not end_date_str:
+        return None
+    try:
+        d = date.fromisoformat(end_date_str)
+        next_day = d + timedelta(days=1)
+        return next_day.isoformat()
+    except ValueError:
+        return end_date_str
 
 
 @router.get("/pending-segments", response_model=List[dict])
@@ -44,13 +55,14 @@ def get_inspection_records(
     current_user: User = Depends(require_role(["巡看人员", "管理员"]))
 ):
     query = db.query(InspectionRecord).join(User).join(TrailSegment)
+    end_date_next = get_end_date_next_day(end_date)
     
     if segment_id:
         query = query.filter(InspectionRecord.segment_id == segment_id)
     if start_date:
         query = query.filter(InspectionRecord.inspection_date >= start_date)
-    if end_date:
-        query = query.filter(InspectionRecord.inspection_date <= end_date)
+    if end_date_next:
+        query = query.filter(InspectionRecord.inspection_date < end_date_next)
     if status:
         query = query.filter(InspectionRecord.overall_status == status)
     

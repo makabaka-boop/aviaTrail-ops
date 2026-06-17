@@ -34,6 +34,8 @@ const NewBatch: React.FC = () => {
   const [riskLoading, setRiskLoading] = useState(false);
   const [riskAssessment, setRiskAssessment] = useState<RouteRiskAssessment | null>(null);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [selectedRouteMaxPeople, setSelectedRouteMaxPeople] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [form] = Form.useForm();
   const navigate = useNavigate();
 
@@ -42,18 +44,28 @@ const NewBatch: React.FC = () => {
   }, []);
 
   const loadRoutes = async () => {
+    setLoading(true);
+    setLoadError(false);
     try {
       const response = await leaderApi.getAvailableRoutes();
       setRoutes(response.data);
     } catch (error) {
-      message.error('加载路线失败');
+      message.error('加载路线失败，请刷新页面重试');
+      setLoadError(true);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleRouteChange = async (routeId: number) => {
     if (!routeId) {
       setRiskAssessment(null);
+      setSelectedRouteMaxPeople(null);
       return;
+    }
+    const selectedRoute = routes.find(r => r.id === routeId);
+    if (selectedRoute) {
+      setSelectedRouteMaxPeople(selectedRoute.max_people || null);
     }
     setRiskLoading(true);
     try {
@@ -145,11 +157,20 @@ const NewBatch: React.FC = () => {
   return (
     <Layout>
       <Card title="新建活动批次">
+        {loadError ? (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <p style={{ color: '#ff4d4f', marginBottom: 16 }}>加载失败，无法获取路线数据</p>
+            <Button type="primary" onClick={loadRoutes} loading={loading}>
+              重新加载
+            </Button>
+          </div>
+        ) : (
         <Form
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
           style={{ maxWidth: 600 }}
+          disabled={loadError}
         >
           <Form.Item name="batch_name" label="批次名称" rules={[{ required: true }]}>
             <Input placeholder="请输入批次名称" />
@@ -233,8 +254,27 @@ const NewBatch: React.FC = () => {
             />
           )}
 
-          <Form.Item name="people_count" label="参与人数" rules={[{ required: true }]}>
-            <InputNumber style={{ width: '100%' }} placeholder="请输入参与人数" min={1} />
+          <Form.Item
+            name="people_count"
+            label="参与人数"
+            rules={[
+              { required: true, message: '请输入参与人数' },
+              {
+                validator: (_, value) => {
+                  if (selectedRouteMaxPeople && value > selectedRouteMaxPeople) {
+                    return Promise.reject(new Error(`参与人数不能超过路线最大人数 ${selectedRouteMaxPeople} 人`));
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
+          >
+            <InputNumber
+              style={{ width: '100%' }}
+              placeholder={selectedRouteMaxPeople ? `请输入参与人数（最多${selectedRouteMaxPeople}人）` : '请输入参与人数'}
+              min={1}
+              max={selectedRouteMaxPeople || undefined}
+            />
           </Form.Item>
 
           <Form.Item name="activity_date" label="活动日期" rules={[{ required: true }]}>
@@ -266,6 +306,7 @@ const NewBatch: React.FC = () => {
             </Space>
           </Form.Item>
         </Form>
+        )}
       </Card>
 
       <Modal

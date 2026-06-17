@@ -24,6 +24,12 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     if db_email:
         raise HTTPException(status_code=400, detail="Email already registered")
     
+    if user.role == "管理员":
+        raise HTTPException(status_code=403, detail="管理员账号需由系统管理员创建")
+    
+    if user.role not in ["巡看人员", "活动领队"]:
+        raise HTTPException(status_code=400, detail="无效的角色")
+    
     hashed_password = get_password_hash(user.password)
     db_user = User(
         username=user.username,

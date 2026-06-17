@@ -19,23 +19,29 @@ const { TextArea } = Input;
 const NewRecord: React.FC = () => {
   const [segments, setSegments] = useState<TrailSegment[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     loadSegments();
-    if (location.state?.segmentId) {
-      form.setFieldsValue({ segment_id: location.state.segmentId });
-    }
   }, []);
 
   const loadSegments = async () => {
+    setLoading(true);
+    setLoadError(false);
     try {
       const response = await adminApi.getTrailSegments();
       setSegments(response.data);
+      if (location.state?.segmentId) {
+        form.setFieldsValue({ segment_id: location.state.segmentId });
+      }
     } catch (error) {
-      message.error('加载路段失败');
+      message.error('加载路段失败，请刷新页面重试');
+      setLoadError(true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -55,11 +61,20 @@ const NewRecord: React.FC = () => {
   return (
     <Layout>
       <Card title="新建巡看记录">
+        {loadError ? (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <p style={{ color: '#ff4d4f', marginBottom: 16 }}>加载失败，无法获取路段数据</p>
+            <Button type="primary" onClick={loadSegments} loading={loading}>
+              重新加载
+            </Button>
+          </div>
+        ) : (
         <Form
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
           style={{ maxWidth: 800 }}
+          disabled={loading || loadError}
         >
           <Form.Item name="segment_id" label="选择路段" rules={[{ required: true }]}>
             <Select placeholder="请选择巡看路段">
@@ -132,6 +147,7 @@ const NewRecord: React.FC = () => {
             </Space>
           </Form.Item>
         </Form>
+        )}
       </Card>
     </Layout>
   );
