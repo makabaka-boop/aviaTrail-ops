@@ -22,6 +22,7 @@ const statusOptions = ['正常开放', '待巡看', '局部绕行', '维护处�
 const Segments: React.FC = () => {
   const [segments, setSegments] = useState<TrailSegment[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingSegment, setEditingSegment] = useState<TrailSegment | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
@@ -33,23 +34,33 @@ const Segments: React.FC = () => {
 
   const loadSegments = async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const response = await adminApi.getTrailSegments(statusFilter);
       setSegments(response.data);
     } catch (error) {
       message.error('加载步道分段失败');
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
   };
 
   const handleAdd = () => {
+    if (loadError) {
+      message.error('数据加载失败，请刷新后重试');
+      return;
+    }
     setEditingSegment(null);
     form.resetFields();
     setModalVisible(true);
   };
 
   const handleEdit = (segment: TrailSegment) => {
+    if (loadError) {
+      message.error('数据加载失败，请刷新后重试');
+      return;
+    }
     setEditingSegment(segment);
     form.setFieldsValue(segment);
     setModalVisible(true);

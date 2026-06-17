@@ -224,7 +224,7 @@ def get_batches(
     if start_date:
         query = query.filter(ActivityBatch.activity_date >= start_date)
     if end_date:
-        query = query.filter(ActivityBatch.activity_date <= end_date)
+        query = query.filter(ActivityBatch.activity_date <= end_date + ' 23:59:59')
     if status:
         query = query.filter(ActivityBatch.status == status)
     if leader_id:
@@ -257,6 +257,16 @@ def create_batch(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["活动领队", "管理员"]))
 ):
+    route = db.query(ActivityRoute).filter(ActivityRoute.id == batch.route_id).first()
+    if not route:
+        raise HTTPException(status_code=404, detail="Route not found")
+    
+    if route.max_people and batch.people_count > route.max_people:
+        raise HTTPException(
+            status_code=400,
+            detail=f"人数超过路线最大限制（最多{route.max_people}人）"
+        )
+    
     db_batch = ActivityBatch(
         **batch.dict(),
         leader_id=current_user.id

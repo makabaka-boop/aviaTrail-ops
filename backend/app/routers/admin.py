@@ -161,6 +161,27 @@ def create_activity_route(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["管理员"]))
 ):
+    if route.segment_ids:
+        import re
+        if not re.match(r'^[\d,]+$', route.segment_ids):
+            raise HTTPException(status_code=400, detail="分段ID格式不正确，只能包含数字和英文逗号")
+        
+        segment_id_list = [int(x.strip()) for x in route.segment_ids.split(',') if x.strip()]
+        if not segment_id_list:
+            raise HTTPException(status_code=400, detail="请输入有效的分段ID")
+        
+        existing_segments = db.query(TrailSegment).filter(
+            TrailSegment.id.in_(segment_id_list)
+        ).all()
+        existing_ids = [s.id for s in existing_segments]
+        invalid_ids = [sid for sid in segment_id_list if sid not in existing_ids]
+        
+        if invalid_ids:
+            raise HTTPException(
+                status_code=400,
+                detail=f"以下分段ID不存在：{', '.join(map(str, invalid_ids))}"
+            )
+    
     db_route = ActivityRoute(**route.dict())
     db.add(db_route)
     db.commit()
@@ -178,6 +199,29 @@ def update_activity_route(
     db_route = db.query(ActivityRoute).filter(ActivityRoute.id == route_id).first()
     if not db_route:
         raise HTTPException(status_code=404, detail="Route not found")
+    
+    if route.segment_ids is not None:
+        import re
+        if not re.match(r'^[\d,]*$', route.segment_ids):
+            raise HTTPException(status_code=400, detail="分段ID格式不正确，只能包含数字和英文逗号")
+        
+        segment_id_list = [int(x.strip()) for x in route.segment_ids.split(',') if x.strip()]
+        if route.segment_ids and not segment_id_list:
+            raise HTTPException(status_code=400, detail="请输入有效的分段ID")
+        
+        if segment_id_list:
+            existing_segments = db.query(TrailSegment).filter(
+                TrailSegment.id.in_(segment_id_list)
+            ).all()
+            existing_ids = [s.id for s in existing_segments]
+            invalid_ids = [sid for sid in segment_id_list if sid not in existing_ids]
+            
+            if invalid_ids:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"以下分段ID不存在：{', '.join(map(str, invalid_ids))}"
+                )
+    
     for key, value in route.dict(exclude_unset=True).items():
         setattr(db_route, key, value)
     db.commit()
