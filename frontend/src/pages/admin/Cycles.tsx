@@ -8,6 +8,7 @@ import {
   InputNumber,
   message,
   Space,
+  Alert,
   Tag,
 } from 'antd';
 import { PlusOutlined, EditOutlined } from '@ant-design/icons';
@@ -20,6 +21,7 @@ const Cycles: React.FC = () => {
   const [cycles, setCycles] = useState<InspectionCycle[]>([]);
   const [segments, setSegments] = useState<TrailSegment[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCycle, setEditingCycle] = useState<InspectionCycle | null>(null);
   const [form] = Form.useForm();
@@ -30,6 +32,7 @@ const Cycles: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const [cyclesRes, segmentsRes] = await Promise.all([
         adminApi.getInspectionCycles(),
@@ -38,6 +41,7 @@ const Cycles: React.FC = () => {
       setCycles(cyclesRes.data);
       setSegments(segmentsRes.data);
     } catch (error) {
+      setLoadError(true);
       message.error('加载数据失败');
     } finally {
       setLoading(false);
@@ -122,6 +126,16 @@ const Cycles: React.FC = () => {
 
   return (
     <Layout>
+      {loadError && (
+        <Alert
+          type="error"
+          message="数据加载失败"
+          description="无法加载数据，请重试"
+          showIcon
+          action={<Button size="small" onClick={loadData}>重试</Button>}
+          style={{ marginBottom: 16 }}
+        />
+      )}
       <div style={{ marginBottom: 16 }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
           新增巡看周期
@@ -133,6 +147,7 @@ const Cycles: React.FC = () => {
         dataSource={cycles}
         rowKey="id"
         loading={loading}
+        scroll={{ x: true }}
       />
 
       <Modal

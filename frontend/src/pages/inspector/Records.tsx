@@ -142,6 +142,7 @@ const Records: React.FC = () => {
           dataSource={records}
           rowKey="id"
           loading={loading}
+          scroll={{ x: true }}
         />
       </Card>
     </Layout>

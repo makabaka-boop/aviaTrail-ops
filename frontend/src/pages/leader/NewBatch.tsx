@@ -15,6 +15,7 @@ import {
   Tag,
   Descriptions,
   Spin,
+  Result,
 } from 'antd';
 import {
   WarningOutlined,
@@ -34,27 +35,35 @@ const NewBatch: React.FC = () => {
   const [riskLoading, setRiskLoading] = useState(false);
   const [riskAssessment, setRiskAssessment] = useState<RouteRiskAssessment | null>(null);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [selectedRouteMaxPeople, setSelectedRouteMaxPeople] = useState<number | undefined>(undefined);
+  const [loadError, setLoadError] = useState(false);
   const [form] = Form.useForm();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadRoutes();
-  }, []);
-
   const loadRoutes = async () => {
+    setLoadError(false);
     try {
       const response = await leaderApi.getAvailableRoutes();
       setRoutes(response.data);
     } catch (error) {
       message.error('加载路线失败');
+      setLoadError(true);
     }
   };
+
+  useEffect(() => {
+    loadRoutes();
+  }, []);
 
   const handleRouteChange = async (routeId: number) => {
     if (!routeId) {
       setRiskAssessment(null);
+      setSelectedRouteMaxPeople(undefined);
       return;
     }
+    const selectedRoute = routes.find((r) => r.id === routeId);
+    setSelectedRouteMaxPeople(selectedRoute?.max_people);
+    form.setFieldValue('people_count', undefined);
     setRiskLoading(true);
     try {
       const response = await leaderApi.getRouteRisk(routeId);
@@ -141,6 +150,23 @@ const NewBatch: React.FC = () => {
     setConfirmModalVisible(false);
     doSubmit();
   };
+
+  if (loadError) {
+    return (
+      <Layout>
+        <Result
+          status="error"
+          title="数据加载失败"
+          subTitle="无法加载路线数据，请稍后重试"
+          extra={
+            <Button type="primary" onClick={loadRoutes}>
+              重新加载
+            </Button>
+          }
+        />
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -233,8 +259,22 @@ const NewBatch: React.FC = () => {
             />
           )}
 
-          <Form.Item name="people_count" label="参与人数" rules={[{ required: true }]}>
-            <InputNumber style={{ width: '100%' }} placeholder="请输入参与人数" min={1} />
+          <Form.Item
+            name="people_count"
+            label="参与人数"
+            rules={[
+              { required: true, message: '请输入参与人数' },
+              {
+                validator: (_, value) => {
+                  if (value && selectedRouteMaxPeople && value > selectedRouteMaxPeople) {
+                    return Promise.reject(new Error(`参与人数不能超过路线最大人数 ${selectedRouteMaxPeople} 人`));
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
+          >
+            <InputNumber style={{ width: '100%' }} placeholder="请输入参与人数" min={1} max={selectedRouteMaxPeople} />
           </Form.Item>
 
           <Form.Item name="activity_date" label="活动日期" rules={[{ required: true }]}>

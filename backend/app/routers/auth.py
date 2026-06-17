@@ -17,6 +17,8 @@ router = APIRouter(prefix="/auth", tags=["认证"])
 
 @router.post("/register", response_model=UserResponse)
 def register(user: UserCreate, db: Session = Depends(get_db)):
+    if user.role == "管理员":
+        raise HTTPException(status_code=403, detail="不允许注册管理员角色")
     db_user = db.query(User).filter(User.username == user.username).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")

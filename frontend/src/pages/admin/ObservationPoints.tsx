@@ -11,6 +11,7 @@ import {
   Popconfirm,
   Space,
   Tag,
+  Alert,
   Switch,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
@@ -24,6 +25,7 @@ const ObservationPoints: React.FC = () => {
   const [points, setPoints] = useState<ObservationPoint[]>([]);
   const [segments, setSegments] = useState<TrailSegment[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingPoint, setEditingPoint] = useState<ObservationPoint | null>(null);
   const [segmentFilter, setSegmentFilter] = useState<number | undefined>(undefined);
@@ -36,6 +38,7 @@ const ObservationPoints: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const [pointsRes, segmentsRes] = await Promise.all([
         adminApi.getObservationPoints(segmentFilter, statusFilter),
@@ -44,6 +47,7 @@ const ObservationPoints: React.FC = () => {
       setPoints(pointsRes.data);
       setSegments(segmentsRes.data);
     } catch (error) {
+      setLoadError(true);
       message.error('加载数据失败');
     } finally {
       setLoading(false);
@@ -153,6 +157,16 @@ const ObservationPoints: React.FC = () => {
 
   return (
     <Layout>
+      {loadError && (
+        <Alert
+          type="error"
+          message="数据加载失败"
+          description="无法加载数据，请重试"
+          showIcon
+          action={<Button size="small" onClick={loadData}>重试</Button>}
+          style={{ marginBottom: 16 }}
+        />
+      )}
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
           新增观察点
@@ -188,6 +202,7 @@ const ObservationPoints: React.FC = () => {
         dataSource={points}
         rowKey="id"
         loading={loading}
+        scroll={{ x: true }}
       />
 
       <Modal

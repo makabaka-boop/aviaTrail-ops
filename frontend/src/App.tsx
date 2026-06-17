@@ -14,11 +14,17 @@ import Records from './pages/inspector/Records';
 import NewRecord from './pages/inspector/NewRecord';
 import Batches from './pages/leader/Batches';
 import NewBatch from './pages/leader/NewBatch';
-import { isAuthenticated } from './utils/auth';
+import { isAuthenticated, hasRole } from './utils/auth';
 import 'dayjs/locale/zh-cn';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return isAuthenticated() ? <>{children}</> : <Navigate to="/login" />;
+};
+
+const RoleRoute: React.FC<{ children: React.ReactNode; roles: string[] }> = ({ children, roles }) => {
+  if (!isAuthenticated()) return <Navigate to="/login" />;
+  if (!hasRole(roles)) return <Navigate to="/dashboard" />;
+  return <>{children}</>;
 };
 
 const App: React.FC = () => {
@@ -38,81 +44,81 @@ const App: React.FC = () => {
           <Route
             path="/admin/segments"
             element={
-              <PrivateRoute>
+              <RoleRoute roles={['管理员']}>
                 <Segments />
-              </PrivateRoute>
+              </RoleRoute>
             }
           />
           <Route
             path="/admin/points"
             element={
-              <PrivateRoute>
+              <RoleRoute roles={['管理员']}>
                 <ObservationPoints />
-              </PrivateRoute>
+              </RoleRoute>
             }
           />
           <Route
             path="/admin/routes"
             element={
-              <PrivateRoute>
+              <RoleRoute roles={['管理员']}>
                 <AdminRoutes />
-              </PrivateRoute>
+              </RoleRoute>
             }
           />
           <Route
             path="/admin/equipments"
             element={
-              <PrivateRoute>
+              <RoleRoute roles={['管理员']}>
                 <Equipments />
-              </PrivateRoute>
+              </RoleRoute>
             }
           />
           <Route
             path="/admin/cycles"
             element={
-              <PrivateRoute>
+              <RoleRoute roles={['管理员']}>
                 <Cycles />
-              </PrivateRoute>
+              </RoleRoute>
             }
           />
           <Route
             path="/inspector/pending"
             element={
-              <PrivateRoute>
+              <RoleRoute roles={['巡看人员', '管理员']}>
                 <Pending />
-              </PrivateRoute>
+              </RoleRoute>
             }
           />
           <Route
             path="/inspector/records"
             element={
-              <PrivateRoute>
+              <RoleRoute roles={['巡看人员', '管理员']}>
                 <Records />
-              </PrivateRoute>
+              </RoleRoute>
             }
           />
           <Route
             path="/inspector/new"
             element={
-              <PrivateRoute>
+              <RoleRoute roles={['巡看人员', '管理员']}>
                 <NewRecord />
-              </PrivateRoute>
+              </RoleRoute>
             }
           />
           <Route
             path="/leader/batches"
             element={
-              <PrivateRoute>
+              <RoleRoute roles={['活动领队', '管理员']}>
                 <Batches />
-              </PrivateRoute>
+              </RoleRoute>
             }
           />
           <Route
             path="/leader/new"
             element={
-              <PrivateRoute>
+              <RoleRoute roles={['活动领队', '管理员']}>
                 <NewBatch />
-              </PrivateRoute>
+              </RoleRoute>
             }
           />
           <Route path="/" element={<Navigate to="/dashboard" />} />

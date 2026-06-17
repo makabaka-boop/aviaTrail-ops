@@ -10,6 +10,7 @@ import {
   message,
   Popconfirm,
   Space,
+  Alert,
   Tag,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
@@ -23,6 +24,7 @@ const equipStatusOptions = ['良好', '需补充', '需维修', '损坏'];
 const Equipments: React.FC = () => {
   const [equipments, setEquipments] = useState<Equipment[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>(undefined);
@@ -35,10 +37,12 @@ const Equipments: React.FC = () => {
 
   const loadEquipments = async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const response = await adminApi.getEquipments(categoryFilter, statusFilter);
       setEquipments(response.data);
     } catch (error) {
+      setLoadError(true);
       message.error('加载器材清单失败');
     } finally {
       setLoading(false);
@@ -131,6 +135,16 @@ const Equipments: React.FC = () => {
 
   return (
     <Layout>
+      {loadError && (
+        <Alert
+          type="error"
+          message="数据加载失败"
+          description="无法加载数据，请重试"
+          showIcon
+          action={<Button size="small" onClick={loadEquipments}>重试</Button>}
+          style={{ marginBottom: 16 }}
+        />
+      )}
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
           新增器材
@@ -166,6 +180,7 @@ const Equipments: React.FC = () => {
         dataSource={equipments}
         rowKey="id"
         loading={loading}
+        scroll={{ x: true }}
       />
 
       <Modal
