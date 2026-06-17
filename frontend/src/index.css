@@ -16,3 +16,68 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+@media (max-width: 768px) {
+  .mobile-sider {
+    position: fixed !important;
+    z-index: 99;
+    height: calc(100vh - 64px);
+    top: 64px;
+    left: 0;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .mobile-sider.ant-layout-sider-collapsed {
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    flex: 0 0 0 !important;
+  }
+
+  .ant-table-wrapper {
+    overflow-x: auto;
+  }
+
+  .ant-card {
+    margin-bottom: 12px !important;
+  }
+
+  .ant-statistic-title {
+    font-size: 12px !important;
+  }
+
+  .ant-statistic-content {
+    font-size: 20px !important;
+  }
+
+  .ant-picker {
+    width: 100% !important;
+  }
+
+  .ant-select {
+    width: 100% !important;
+  }
+
+  .ant-form-item {
+    margin-bottom: 16px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .ant-statistic-title {
+    font-size: 11px !important;
+  }
+
+  .ant-statistic-content {
+    font-size: 18px !important;
+  }
+
+  .ant-card-head {
+    padding: 0 12px !important;
+    min-height: 44px !important;
+  }
+
+  .ant-card-body {
+    padding: 12px !important;
+  }
+}

@@ -25,7 +25,21 @@ const Routes: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingRoute, setEditingRoute] = useState<ActivityRoute | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
+  const [segments, setSegments] = useState<any[]>([]);
   const [form] = Form.useForm();
+
+  useEffect(() => {
+    loadSegments();
+  }, []);
+
+  const loadSegments = async () => {
+    try {
+      const response = await adminApi.getTrailSegments();
+      setSegments(response.data);
+    } catch (error) {
+      message.error('加载步道分段失败');
+    }
+  };
 
   useEffect(() => {
     loadRoutes();
@@ -67,17 +81,26 @@ const Routes: React.FC = () => {
 
   const handleSubmit = async (values: any) => {
     try {
+      const submitValues = { ...values };
+      if (submitValues.segment_ids) {
+        submitValues.segment_ids = submitValues.segment_ids
+          .replace(/，/g, ',')
+          .replace(/\s/g, '')
+          .split(',')
+          .filter((id: string) => id !== '')
+          .join(',');
+      }
       if (editingRoute) {
-        await adminApi.updateActivityRoute(editingRoute.id, values);
+        await adminApi.updateActivityRoute(editingRoute.id, submitValues);
         message.success('更新成功');
       } else {
-        await adminApi.createActivityRoute(values);
+        await adminApi.createActivityRoute(submitValues);
         message.success('创建成功');
       }
       setModalVisible(false);
       loadRoutes();
-    } catch (error) {
-      message.error('操作失败');
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || '操作失败');
     }
   };
 
@@ -167,8 +190,31 @@ const Routes: React.FC = () => {
           <Form.Item name="description" label="描述">
             <Input.TextArea placeholder="请输入描述" rows={3} />
           </Form.Item>
-          <Form.Item name="segment_ids" label="包含分段ID">
-            <Input placeholder="请输入分段ID，用逗号分隔" />
+          <Form.Item
+            name="segment_ids"
+            label="包含分段ID"
+            rules={[
+              {
+                validator: (_, value) => {
+                  if (!value) {
+                    return Promise.resolve();
+                  }
+                  const normalizedValue = value.replace(/，/g, ',').replace(/\s/g, '');
+                  if (!/^(\d+,)*\d+$/.test(normalizedValue) && normalizedValue !== '') {
+                    return Promise.reject(new Error('请输入有效的数字ID，用英文逗号分隔'));
+                  }
+                  const ids = normalizedValue.split(',').filter((id: string) => id !== '').map(Number);
+                  const validIds = segments.map(s => s.id);
+                  const invalidIds = ids.filter((id: number) => !validIds.includes(id));
+                  if (invalidIds.length > 0) {
+                    return Promise.reject(new Error(`分段ID ${invalidIds.join(', ')} 不存在`));
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
+          >
+            <Input placeholder="请输入分段ID，用英文逗号分隔" />
           </Form.Item>
           <Form.Item name="estimated_duration_minutes" label="预估时长(分钟)">
             <InputNumber style={{ width: '100%' }} placeholder="请输入预估时长" min={0} />

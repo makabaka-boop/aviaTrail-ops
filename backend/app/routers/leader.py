@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from app.database import get_db
 from app.models import User, ActivityBatch, ActivityRoute, RouteChange, Feedback, TrailSegment, ObservationPoint, InspectionRecord, InspectionCycle
 from app.schemas.activity import (
@@ -14,6 +14,17 @@ from app.schemas.activity import (
 from app.auth import require_role, get_current_user
 
 router = APIRouter(prefix="/leader", tags=["活动领队"])
+
+
+def get_end_date_next_day(end_date_str: Optional[str]) -> Optional[str]:
+    if not end_date_str:
+        return None
+    try:
+        d = date.fromisoformat(end_date_str)
+        next_day = d + timedelta(days=1)
+        return next_day.isoformat()
+    except ValueError:
+        return end_date_str
 
 
 @router.get("/route-risk/{route_id}", response_model=RouteRiskAssessment)
@@ -216,6 +227,7 @@ def get_batches(
     current_user: User = Depends(require_role(["活动领队", "管理员"]))
 ):
     query = db.query(ActivityBatch).join(ActivityRoute).join(User)
+    end_date_next = get_end_date_next_day(end_date)
     
     if current_user.role == "活动领队":
         query = query.filter(ActivityBatch.leader_id == current_user.id)
@@ -223,8 +235,8 @@ def get_batches(
         query = query.filter(ActivityBatch.route_id == route_id)
     if start_date:
         query = query.filter(ActivityBatch.activity_date >= start_date)
-    if end_date:
-        query = query.filter(ActivityBatch.activity_date <= end_date)
+    if end_date_next:
+        query = query.filter(ActivityBatch.activity_date < end_date_next)
     if status:
         query = query.filter(ActivityBatch.status == status)
     if leader_id:
@@ -257,6 +269,16 @@ def create_batch(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["活动领队", "管理员"]))
 ):
+    route = db.query(ActivityRoute).filter(ActivityRoute.id == batch.route_id).first()
+    if not route:
+        raise HTTPException(status_code=404, detail="Route not found")
+    
+    if route.max_people and batch.people_count > route.max_people:
+        raise HTTPException(
+            status_code=400,
+            detail=f"参与人数不能超过路线最大人数 {route.max_people} 人"
+        )
+    
     db_batch = ActivityBatch(
         **batch.dict(),
         leader_id=current_user.id

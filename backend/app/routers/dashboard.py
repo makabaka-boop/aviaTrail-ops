@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from collections import defaultdict
 from app.database import get_db
 from app.models import (
@@ -14,16 +14,42 @@ from app.auth import require_role, get_current_user
 router = APIRouter(prefix="/dashboard", tags=["仪表板"])
 
 
+def get_end_date_next_day(end_date_str: Optional[str]) -> Optional[str]:
+    if not end_date_str:
+        return None
+    try:
+        d = date.fromisoformat(end_date_str)
+        next_day = d + timedelta(days=1)
+        return next_day.isoformat()
+    except ValueError:
+        return end_date_str
+
+
 @router.get("/overview")
 def get_overview(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["管理员", "巡看人员", "活动领队"]))
 ):
     total_segments = db.query(TrailSegment).count()
     total_points = db.query(ObservationPoint).count()
     total_routes = db.query(ActivityRoute).count()
-    total_batches = db.query(ActivityBatch).count()
-    total_inspections = db.query(InspectionRecord).count()
+    end_date_next = get_end_date_next_day(end_date)
+    
+    batch_query = db.query(ActivityBatch)
+    if start_date:
+        batch_query = batch_query.filter(ActivityBatch.activity_date >= start_date)
+    if end_date_next:
+        batch_query = batch_query.filter(ActivityBatch.activity_date < end_date_next)
+    total_batches = batch_query.count()
+    
+    inspection_query = db.query(InspectionRecord)
+    if start_date:
+        inspection_query = inspection_query.filter(InspectionRecord.inspection_date >= start_date)
+    if end_date_next:
+        inspection_query = inspection_query.filter(InspectionRecord.inspection_date < end_date_next)
+    total_inspections = inspection_query.count()
     
     status_counts = db.query(
         TrailSegment.status,
@@ -47,6 +73,8 @@ def get_route_heatmap(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["管理员", "巡看人员", "活动领队"]))
 ):
+    end_date_next = get_end_date_next_day(end_date)
+    
     query = db.query(
         ActivityRoute.id,
         ActivityRoute.name,
@@ -56,8 +84,8 @@ def get_route_heatmap(
     
     if start_date:
         query = query.filter(ActivityBatch.activity_date >= start_date)
-    if end_date:
-        query = query.filter(ActivityBatch.activity_date <= end_date)
+    if end_date_next:
+        query = query.filter(ActivityBatch.activity_date < end_date_next)
     
     results = query.group_by(ActivityRoute.id, ActivityRoute.name).all()
     
@@ -71,31 +99,46 @@ def get_route_heatmap(
 
 @router.get("/anomaly-distribution")
 def get_anomaly_distribution(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["管理员", "巡看人员", "活动领队"]))
 ):
     anomalies = []
+    end_date_next = get_end_date_next_day(end_date)
     
-    obstruction_records = db.query(
+    obstruction_query = db.query(
         TrailSegment.name,
         func.count(InspectionRecord.id).label('count')
     ).join(InspectionRecord, TrailSegment.id == InspectionRecord.segment_id
-    ).filter(InspectionRecord.obstruction_status != "正常"
-    ).group_by(TrailSegment.name).all()
+    ).filter(InspectionRecord.obstruction_status != "正常")
+    if start_date:
+        obstruction_query = obstruction_query.filter(InspectionRecord.inspection_date >= start_date)
+    if end_date_next:
+        obstruction_query = obstruction_query.filter(InspectionRecord.inspection_date < end_date_next)
+    obstruction_records = obstruction_query.group_by(TrailSegment.name).all()
     
-    slippery_records = db.query(
+    slippery_query = db.query(
         TrailSegment.name,
         func.count(InspectionRecord.id).label('count')
     ).join(InspectionRecord, TrailSegment.id == InspectionRecord.segment_id
-    ).filter(InspectionRecord.slippery_warning == "有风险"
-    ).group_by(TrailSegment.name).all()
+    ).filter(InspectionRecord.slippery_warning == "有风险")
+    if start_date:
+        slippery_query = slippery_query.filter(InspectionRecord.inspection_date >= start_date)
+    if end_date_next:
+        slippery_query = slippery_query.filter(InspectionRecord.inspection_date < end_date_next)
+    slippery_records = slippery_query.group_by(TrailSegment.name).all()
     
-    bleachers_records = db.query(
+    bleachers_query = db.query(
         TrailSegment.name,
         func.count(InspectionRecord.id).label('count')
     ).join(InspectionRecord, TrailSegment.id == InspectionRecord.segment_id
-    ).filter(InspectionRecord.bleachers_status != "正常"
-    ).group_by(TrailSegment.name).all()
+    ).filter(InspectionRecord.bleachers_status != "正常")
+    if start_date:
+        bleachers_query = bleachers_query.filter(InspectionRecord.inspection_date >= start_date)
+    if end_date_next:
+        bleachers_query = bleachers_query.filter(InspectionRecord.inspection_date < end_date_next)
+    bleachers_records = bleachers_query.group_by(TrailSegment.name).all()
     
     return {
         "obstruction": {s: c for s, c in obstruction_records},
@@ -111,6 +154,8 @@ def get_inspection_workload(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["管理员", "巡看人员", "活动领队"]))
 ):
+    end_date_next = get_end_date_next_day(end_date)
+    
     query = db.query(
         User.id,
         User.full_name,
@@ -119,8 +164,8 @@ def get_inspection_workload(
     
     if start_date:
         query = query.filter(InspectionRecord.inspection_date >= start_date)
-    if end_date:
-        query = query.filter(InspectionRecord.inspection_date <= end_date)
+    if end_date_next:
+        query = query.filter(InspectionRecord.inspection_date < end_date_next)
     
     results = query.group_by(User.id, User.full_name).filter(User.role == "巡看人员").all()
     
@@ -133,12 +178,64 @@ def get_inspection_workload(
 
 @router.get("/pending-points")
 def get_pending_points(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["管理员", "巡看人员", "活动领队"]))
 ):
-    abnormal_segments = db.query(TrailSegment).filter(
+    end_date_next = get_end_date_next_day(end_date)
+    
+    status_abnormal_segments = db.query(TrailSegment).filter(
         TrailSegment.status != "正常开放"
     ).all()
+    
+    status_abnormal_dict = {s.id: s for s in status_abnormal_segments}
+    
+    record_abnormal_query = db.query(
+        TrailSegment.id,
+        TrailSegment.name,
+        TrailSegment.status,
+        func.count(InspectionRecord.id).label('anomaly_count')
+    ).join(InspectionRecord, TrailSegment.id == InspectionRecord.segment_id
+    ).filter(
+        or_(
+            InspectionRecord.obstruction_status != "正常",
+            InspectionRecord.slippery_warning == "有风险",
+            InspectionRecord.bleachers_status != "正常"
+        )
+    )
+    if start_date:
+        record_abnormal_query = record_abnormal_query.filter(InspectionRecord.inspection_date >= start_date)
+    if end_date_next:
+        record_abnormal_query = record_abnormal_query.filter(InspectionRecord.inspection_date < end_date_next)
+    
+    record_abnormal_results = record_abnormal_query.group_by(TrailSegment.id, TrailSegment.name, TrailSegment.status
+    ).all()
+    
+    record_abnormal_dict = {r.id: r for r in record_abnormal_results}
+    
+    all_segment_ids = set(status_abnormal_dict.keys()) | set(record_abnormal_dict.keys())
+    
+    abnormal_segments = []
+    for seg_id in all_segment_ids:
+        if seg_id in record_abnormal_dict:
+            r = record_abnormal_dict[seg_id]
+            abnormal_segments.append({
+                "id": r.id,
+                "name": r.name,
+                "status": r.status,
+                "anomaly_count": r.anomaly_count or 0
+            })
+        else:
+            s = status_abnormal_dict[seg_id]
+            abnormal_segments.append({
+                "id": s.id,
+                "name": s.name,
+                "status": s.status,
+                "anomaly_count": 0
+            })
+    
+    abnormal_segments.sort(key=lambda x: x["anomaly_count"], reverse=True)
     
     abnormal_points = db.query(ObservationPoint).filter(
         ObservationPoint.status != "正常开放"
@@ -161,11 +258,7 @@ def get_pending_points(
             })
     
     return {
-        "abnormal_segments": [{
-            "id": s.id,
-            "name": s.name,
-            "status": s.status
-        } for s in abnormal_segments],
+        "abnormal_segments": abnormal_segments,
         "abnormal_points": [{
             "id": p.id,
             "name": p.name,
@@ -238,15 +331,20 @@ def get_overdue_inspections(
 
 @router.get("/activity-peak-hours")
 def get_activity_peak_hours(
-    days: int = 30,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["管理员", "巡看人员", "活动领队"]))
 ):
-    cutoff_date = datetime.now() - timedelta(days=days)
+    end_date_next = get_end_date_next_day(end_date)
     
-    batches = db.query(ActivityBatch).filter(
-        ActivityBatch.activity_date >= cutoff_date
-    ).all()
+    query = db.query(ActivityBatch)
+    if start_date:
+        query = query.filter(ActivityBatch.activity_date >= start_date)
+    if end_date_next:
+        query = query.filter(ActivityBatch.activity_date < end_date_next)
+    
+    batches = query.all()
     
     hour_distribution = defaultdict(int)
     
@@ -266,23 +364,31 @@ def get_activity_peak_hours(
 
 @router.get("/risk-overlap")
 def get_risk_overlap(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["管理员", "巡看人员", "活动领队"]))
 ):
-    today = datetime.now()
-
     abnormal_segments = db.query(TrailSegment).filter(
         TrailSegment.status != "正常开放"
     ).all()
 
     abnormal_segment_ids = [s.id for s in abnormal_segments]
+    end_date_next = get_end_date_next_day(end_date)
 
-    today_batches = db.query(ActivityBatch).filter(
-        func.date(ActivityBatch.activity_date) == today.date()
-    ).join(ActivityRoute).all()
+    batches_query = db.query(ActivityBatch).join(ActivityRoute)
+    if start_date:
+        batches_query = batches_query.filter(ActivityBatch.activity_date >= start_date)
+    if end_date_next:
+        batches_query = batches_query.filter(ActivityBatch.activity_date < end_date_next)
+    elif not start_date:
+        today = datetime.now()
+        batches_query = batches_query.filter(func.date(ActivityBatch.activity_date) == today.date())
+    
+    filtered_batches = batches_query.all()
 
     high_risk_batches = []
-    for batch in today_batches:
+    for batch in filtered_batches:
         route = batch.route
         if route.segment_ids:
             segment_ids = [int(x) for x in route.segment_ids.split(',') if x.strip().isdigit()]
@@ -306,12 +412,23 @@ def get_risk_overlap(
 
 @router.get("/risk-batches")
 def get_risk_batches(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["管理员", "巡看人员", "活动领队"]))
 ):
-    risky_batches = db.query(ActivityBatch).filter(
+    end_date_next = get_end_date_next_day(end_date)
+    
+    risky_batches_query = db.query(ActivityBatch).filter(
         ActivityBatch.risk_level.in_(["高", "中"])
-    ).join(ActivityRoute).join(User).order_by(ActivityBatch.activity_date.desc()).all()
+    ).join(ActivityRoute).join(User)
+    
+    if start_date:
+        risky_batches_query = risky_batches_query.filter(ActivityBatch.activity_date >= start_date)
+    if end_date_next:
+        risky_batches_query = risky_batches_query.filter(ActivityBatch.activity_date < end_date_next)
+    
+    risky_batches = risky_batches_query.order_by(ActivityBatch.activity_date.desc()).all()
 
     return [{
         "id": b.id,
